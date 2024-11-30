@@ -199,13 +199,14 @@ runs:
     - if: ${{ steps.plan.outcome == 'success' || steps.download.outcome == 'success' }}
       shell: bash
       run: |
+        set -x
         # TF show.
         ${{ inputs.tool }}${{ steps.arg.outputs.arg-chdir }} show${{ steps.arg.outputs.arg-var-file }}${{ steps.arg.outputs.arg-var }} tf.plan > tf.console.txt
 
         # Diff of changes.
         # Filter lines starting with "  # " and save to tf.diff.txt, then prepend diff-specific symbols based on specific keywords.
         grep -E '^  # ' tf.console.txt | sed -e 's/^  # \(.* be created\)/+ \1/' -e 's/^  # \(.* be destroyed\)/- \1/' -e 's/^  # \(.* be updated\|.* be replaced\)/! \1/' -e 's/^  # \(.* be read\)/~ \1/' -e 's/^  # \(.*\)/# \1/' > tf.diff.txt || true
-
+        set +x
     - if: ${{ inputs.plan-encrypt != '' && steps.plan.outcome == 'success' }}
       env:
         pass: ${{ inputs.plan-encrypt }}
