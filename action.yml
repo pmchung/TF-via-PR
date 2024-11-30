@@ -124,7 +124,7 @@ runs:
       shell: bash
       run: |
         # TF initialize.
-
+        trap 'exit_code="$?"; echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"' EXIT
         args="${{ steps.arg.outputs.arg-backend-config }}${{ steps.arg.outputs.arg-backend }}${{ steps.arg.outputs.arg-var-file }}${{ steps.arg.outputs.arg-var }}${{ steps.arg.outputs.arg-force-copy }}${{ steps.arg.outputs.arg-from-module }}${{ steps.arg.outputs.arg-get }}${{ steps.arg.outputs.arg-lock-timeout }}${{ steps.arg.outputs.arg-lock }}${{ steps.arg.outputs.arg-lockfile }}${{ steps.arg.outputs.arg-migrate-state }}${{ steps.arg.outputs.arg-plugin-dir }}${{ steps.arg.outputs.arg-reconfigure }}${{ steps.arg.outputs.arg-test-directory }}${{ steps.arg.outputs.arg-upgrade }}"
         echo "${{ inputs.tool }} init${{ steps.arg.outputs.arg-chdir }}${args}" | sed 's/ -/\n -/g' > tf.command.txt
         ${{ inputs.tool }}${{ steps.arg.outputs.arg-chdir }} init${args} 2> >(tee tf.console.txt 2>&1)
@@ -163,16 +163,11 @@ runs:
       id: plan
       shell: bash
       run: |
-        set +e
         # TF plan.
+        trap 'exit_code="$?"; echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"; if [[ "$exit_code" == "2" ]]; then exit 0; fi' EXIT
         args="${{ steps.arg.outputs.arg-destroy }}${{ steps.arg.outputs.arg-var-file }}${{ steps.arg.outputs.arg-var }}${{ steps.arg.outputs.arg-compact-warnings }}${{ steps.arg.outputs.arg-concise }}${{ steps.arg.outputs.arg-detailed-exitcode }}${{ steps.arg.outputs.arg-generate-config-out }}${{ steps.arg.outputs.arg-lock-timeout }}${{ steps.arg.outputs.arg-lock }}${{ steps.arg.outputs.arg-parallelism }}${{ steps.arg.outputs.arg-refresh-only }}${{ steps.arg.outputs.arg-refresh }}${{ steps.arg.outputs.arg-replace }}${{ steps.arg.outputs.arg-target }} -out=tf.plan"
         echo "${{ inputs.tool }} plan${{ steps.arg.outputs.arg-chdir }}${args}" | sed 's/ -/\n -/g' > tf.command.txt
         ${{ inputs.tool }}${{ steps.arg.outputs.arg-chdir }} plan${args} 2> >(tee tf.console.txt 2>&1)
-
-        okok=$?
-        echo "okok=$okok" >> "$GITHUB_OUTPUT"
-        echo "exit_code=$okok" >> "$GITHUB_OUTPUT"
-
 
     - if: ${{ inputs.command == 'apply' && inputs.arg-auto-approve != 'true' }}
       id: download
@@ -202,7 +197,6 @@ runs:
     - if: ${{ steps.plan.outcome == 'success' || steps.download.outcome == 'success' }}
       shell: bash
       run: |
-        set -x
         # TF show.
         ${{ inputs.tool }}${{ steps.arg.outputs.arg-chdir }} show${{ steps.arg.outputs.arg-var-file }}${{ steps.arg.outputs.arg-var }} tf.plan > tf.console.txt
 
@@ -215,8 +209,6 @@ runs:
             -e 's/^  # \(.* be read\)/~ \1/' \
             -e 's/^  # \(.* has changed\)/! \1/' \
             -e 's/^  # \(.*\)/# \1/' > tf.diff.txt || true
-
-        set +x
     - if: ${{ inputs.plan-encrypt != '' && steps.plan.outcome == 'success' }}
       env:
         pass: ${{ inputs.plan-encrypt }}
@@ -405,10 +397,6 @@ outputs:
   exitcode:
     description: "Exit code of the last TF command."
     value: ${{ steps.apply.outputs.exit_code || steps.plan.outputs.exit_code || steps.format.outputs.exit_code || steps.validate.outputs.exit_code || steps.workspace.outputs.exit_code || steps.initialize.outputs.exit_code }}
-  okok:
-    description: "Exit code of the last TF command."
-  #  value: ${{ steps.apply.outputs.exit_code || steps.plan.outputs.exit_code || steps.format.outputs.exit_code || steps.validate.outputs.exit_code || steps.workspace.outputs.exit_code || steps.initialize.outputs.exit_code }}
-    value: ${{ steps.plan.outputs.okok }}
   identifier:
     description: "Unique name of the workflow run and artifact."
     value: ${{ steps.identifier.outputs.name }}
