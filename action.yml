@@ -172,7 +172,7 @@ runs:
         exit_code="$?"
         echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
         echo "${exit_code}"
-        if [[ "$exit_code" == "2" ]]; then exit 0
+        if [[ "$exit_code" == "2" ]]; then exit 0; fi
         exit "${exit_code}"
 
     - if: ${{ inputs.command == 'apply' && inputs.arg-auto-approve != 'true' }}
