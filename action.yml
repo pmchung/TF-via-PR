@@ -163,16 +163,17 @@ runs:
       id: plan
       shell: bash
       run: |
+        set +e
         # TF plan.
-
         args="${{ steps.arg.outputs.arg-destroy }}${{ steps.arg.outputs.arg-var-file }}${{ steps.arg.outputs.arg-var }}${{ steps.arg.outputs.arg-compact-warnings }}${{ steps.arg.outputs.arg-concise }}${{ steps.arg.outputs.arg-detailed-exitcode }}${{ steps.arg.outputs.arg-generate-config-out }}${{ steps.arg.outputs.arg-lock-timeout }}${{ steps.arg.outputs.arg-lock }}${{ steps.arg.outputs.arg-parallelism }}${{ steps.arg.outputs.arg-refresh-only }}${{ steps.arg.outputs.arg-refresh }}${{ steps.arg.outputs.arg-replace }}${{ steps.arg.outputs.arg-target }} -out=tf.plan"
         echo "${{ inputs.tool }} plan${{ steps.arg.outputs.arg-chdir }}${args}" | sed 's/ -/\n -/g' > tf.command.txt
         ${{ inputs.tool }}${{ steps.arg.outputs.arg-chdir }} plan${args} 2> >(tee tf.console.txt 2>&1)
 
-        exit_code=$?
-        echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"'
-
-        echo ${exit_code}
+        exit_code="$?"
+        echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+        echo "${exit_code}"
+        if [[ "$exit_code" == "2" ]]; then exit 0
+        exit "${exit_code}"
 
     - if: ${{ inputs.command == 'apply' && inputs.arg-auto-approve != 'true' }}
       id: download
